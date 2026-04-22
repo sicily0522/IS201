@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Riddle Word Search</title>
+
+<style>
+:root {
+  --bg: #2a2a2a;
+  --text: #ffffff;
+  --grid: #3a3a3a;
+  --selected: #7dd3fc;
+  --found: #f9a8d4;
+  --button: #f9a8d4;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  background: var(--bg);
+  color: var(--text);
+}
+
+h1 { margin-top: 20px; }
+
+#grid {
+  display: grid;
+  grid-template-columns: repeat(12, 35px);
+  gap: 5px;
+  justify-content: center;
+  margin: 20px auto;
+}
+
+.cell {
+  width: 35px;
+  height: 35px;
+  background: var(--grid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-weight: bold;
+  border-radius: 5px;
+  transition: 0.2s;
+}
+
+.cell:hover {
+  transform: scale(1.05);
+}
+
+.selected {
+  background: var(--selected);
+}
+
+.found {
+  background: var(--found);
+}
+
+#clues {
+  max-width: 500px;
+  margin: 20px auto;
+  text-align: left;
+}
+
+.clue {
+  margin: 5px 0;
+}
+
+.done {
+  text-decoration: line-through;
+  color: var(--found);
+}
+
+/* WIN SCREEN */
+#winScreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  justify-content: center;
+  align-items: center;
+}
+
+.winBox {
+  background: #3a3a3a;
+  padding: 30px;
+  border-radius: 12px;
+  text-align: center;
+  color: white;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  animation: pop 0.3s ease;
+}
+
+.winBox button {
+  margin-top: 15px;
+  padding: 10px 20px;
+  background: var(--button);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #2a2a2a;
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.nav-button {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+}
+
+.nav-button a {
+  display: block;        /* 👈 this makes them stack */
+  background-color: #3a3a3a;
+  color: white;
+  padding: 10px 15px;
+  text-decoration: none;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+</style>
+</head>
+
+<body>
+  <div class="nav-button">
+  <a href="startbootstrap-clean-blog-gh-pages-landingpage/landingPage.html">Sicily Dickman</a>
+  <a href="index.html">Resume</a>
+  <a href="fromScratch.html">Travel</a>
+</div>
+
+<h1>Riddle Word Search</h1>
+<p>Solve the riddles, then find the words!</p>
+
+<div id="grid"></div>
+<div id="clues"></div>
+
+<!-- WIN SCREEN -->
+<div id="winScreen">
+  <div class="winBox">
+    <h2>🎉 You Solved It!</h2>
+    <p>All riddles completed</p>
+    <button onclick="restartGame()">Play Again</button>
+  </div>
+</div>
+
+<script>
+const size = 12;
+
+const wordData = [
+  { word: "APPLE", clue: "I keep doctors away." },
+  { word: "BRAIN", clue: "I control your thoughts." },
+  { word: "RIVER", clue: "I flow but never walk." },
+  { word: "LIGHT", clue: "I travel faster than anything." },
+  { word: "CHAIR", clue: "You sit on me." },
+  { word: "CLOCK", clue: "I tell you what you never have enough of." },
+  { word: "PLANT", clue: "I grow but don’t walk." },
+  { word: "SNAKE", clue: "I slither without legs." },
+  { word: "SWEET", clue: "Sugar makes me this." },
+  { word: "CLOUD", clue: "I float in the sky." }
+];
+
+let grid, selectedCells, isMouseDown, foundWords, gameOver;
+
+const directions = [
+  [0,1], [0,-1],
+  [1,0], [-1,0],
+  [1,1], [-1,-1],
+  [1,-1], [-1,1]
+];
+
+const gridEl = document.getElementById("grid");
+const cluesEl = document.getElementById("clues");
+
+function init() {
+  grid = Array.from({length: size}, () => Array(size).fill(""));
+  selectedCells = [];
+  isMouseDown = false;
+  foundWords = [];
+  gameOver = false;
+
+  placeWords();
+  fillGrid();
+  drawGrid();
+  drawClues();
+
+  document.getElementById("winScreen").style.display = "none";
+}
+
+function placeWords() {
+  wordData.forEach(({word}) => {
+    let placed = false;
+
+    while (!placed) {
+      let dir = directions[Math.floor(Math.random() * directions.length)];
+      let row = Math.floor(Math.random() * size);
+      let col = Math.floor(Math.random() * size);
+
+      let fits = true;
+
+      for (let i = 0; i < word.length; i++) {
+        let r = row + dir[0]*i;
+        let c = col + dir[1]*i;
+
+        if (r < 0 || r >= size || c < 0 || c >= size || grid[r][c] !== "") {
+          fits = false;
+          break;
+        }
+      }
+
+      if (fits) {
+        for (let i = 0; i < word.length; i++) {
+          let r = row + dir[0]*i;
+          let c = col + dir[1]*i;
+          grid[r][c] = word[i];
+        }
+        placed = true;
+      }
+    }
+  });
+}
+
+function fillGrid() {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  for (let i = 0; i < size; i++) {
+    for (let j = 0; j < size; j++) {
+      if (grid[i][j] === "") {
+        grid[i][j] = letters[Math.floor(Math.random() * letters.length)];
+      }
+    }
+  }
+}
+
+function drawGrid() {
+  gridEl.innerHTML = "";
+
+  for (let i = 0; i < size; i++) {
+    for (let j = 0; j < size; j++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.textContent = grid[i][j];
+
+      cell.addEventListener("mousedown", startSelect);
+      cell.addEventListener("mouseover", dragSelect);
+
+      gridEl.appendChild(cell);
+    }
+  }
+}
+
+document.addEventListener("mouseup", endSelect);
+
+function startSelect(e) {
+  if (gameOver) return;
+
+  isMouseDown = true;
+  selectedCells = [];
+  e.target.classList.add("selected");
+  selectedCells.push(e.target);
+}
+
+function dragSelect(e) {
+  if (!isMouseDown || gameOver) return;
+
+  if (!selectedCells.includes(e.target)) {
+    e.target.classList.add("selected");
+    selectedCells.push(e.target);
+  }
+}
+
+function endSelect() {
+  if (gameOver) return;
+
+  isMouseDown = false;
+
+  let word = selectedCells.map(c => c.textContent).join("");
+  let reversed = word.split("").reverse().join("");
+
+  let match = wordData.find(w => w.word === word || w.word === reversed);
+
+  if (match && !foundWords.includes(match.word)) {
+    selectedCells.forEach(c => {
+      c.classList.remove("selected");
+      c.classList.add("found");
+    });
+
+    foundWords.push(match.word);
+    markClue(match.word);
+  } else {
+    selectedCells.forEach(c => c.classList.remove("selected"));
+  }
+
+  selectedCells = [];
+
+  if (!gameOver && foundWords.length === wordData.length) {
+    gameOver = true;
+
+    setTimeout(() => {
+      document.getElementById("winScreen").style.display = "flex";
+    }, 100);
+  }
+}
+
+function drawClues() {
+  cluesEl.innerHTML = "<h3>Clues</h3>";
+  wordData.forEach(w => {
+    const div = document.createElement("div");
+    div.className = "clue";
+    div.id = "clue-" + w.word;
+    div.textContent = "• " + w.clue;
+    cluesEl.appendChild(div);
+  });
+}
+
+function markClue(word) {
+  document.getElementById("clue-" + word).classList.add("done");
+}
+
+function restartGame() {
+  document.getElementById("winScreen").style.display = "none";
+  init();
+}
+
+init();
+</script>
+
+</body>
+</html>
